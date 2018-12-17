@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DI_container
+namespace DIContainer
 {
     public class Class1
     {
