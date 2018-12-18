@@ -12,12 +12,14 @@ namespace DIContainer
 
         class ImplementationContainer
         {
-            static object instance;
-            static object syncRoot = new object();
+            object instance;
+            object syncRoot = new object();
 
-            public static Func<object> GetInstance(Func<object> creator)
+            public Func<object> createInstance;
+
+            public Func<object> GetInstance(Func<object> creator)
             {
-                object instance = null;
+                
                 return () =>
                 {
                     if (instance == null)
@@ -37,39 +39,41 @@ namespace DIContainer
              
         }
 
-        Dictionary<Type, IEnumerable<Func<object>>> dependencies/* = new Dictionary<Type, IEnumerable<(Type, bool)>>()*/;
+        Dictionary<Type, List<ImplementationContainer>> dependencies/* = new Dictionary<Type, IEnumerable<(Type, bool)>>()*/;
         
         //Dictionary<>
 
         public DependencyProvider(DependenciesConfiguration config)
         {
-            dependencies = new Dictionary<Type, IEnumerable<Func<object>>>();
+            dependencies = new Dictionary<Type, List<ImplementationContainer>>();
             foreach(var dependency in config.Dependencies)
             {
                 dependencies.Add(dependency.Key, ConvertToFactories(dependency.Value));
             }
         }
 
-        private IEnumerable<Func<object>> ConvertToFactories(IEnumerable<(Type, bool)> tuples)
+        private List<ImplementationContainer> ConvertToFactories(IEnumerable<(Type, bool)> tuples)
         {
-            return from tuple in tuples
-                   select ConvertToFactory(tuple);
+            return (from tuple in tuples
+                    select ConvertToFactory(tuple)).ToList();
         }
 
-        private Func<object> ConvertToFactory((Type, bool) tuple)
+        private ImplementationContainer ConvertToFactory((Type, bool) tuple)
         {
             Type type;
             bool isSingleton;
             (type, isSingleton) = tuple;
-
+            var implContainer = new ImplementationContainer();
             if (isSingleton)
             {
-                return ImplementationContainer.GetInstance(() => CreateFromCtor(type));
+                implContainer.createInstance = implContainer.GetInstance(() => CreateFromCtor(type));
             }
             else
             {
-                return () => CreateFromCtor(type);
+                implContainer.createInstance = () => CreateFromCtor(type);
             }
+
+            return implContainer;
         }
 
         public IEnumerable<TService> Resolve<TService>()
@@ -81,7 +85,7 @@ namespace DIContainer
         private IEnumerable<object> Resolve(Type type)
         {
             return from dependency in dependencies[type]
-                   select dependency();
+                   select dependency.createInstance();
         }
 
         object CreateFromCtor(Type type)

@@ -13,7 +13,7 @@ namespace DIContainer
 
         internal Dictionary<Type, IEnumerable<(Type, bool)>> Dependencies
         {
-            get;
+            get => dependencies;
         }
 
         public void Register<TDependency, TImplementation>(bool isSingleton = false) where TDependency : class
