@@ -17,22 +17,11 @@ namespace DIContainer
         }
 
         public void Register<TDependency, TImplementation>(bool isSingleton = false) where TDependency : class
-            where TImplementation : class, TDependency, new()
+            where TImplementation : class, TDependency
         {
             Type dependency = typeof(TDependency);
             Type implementation = typeof(TImplementation);
-
-            //if (dependencies.ContainsKey(dependency))
-            //{
-            //    List<Type> implementations = dependencies[dependency].ToList();
-            //    implementations.Add(implementation);
-            //    dependencies[dependency] = implementations.AsEnumerable();
-            //}
-            //else
-            //{
-            //    dependencies[dependency] = new List<Type>(new Type[] { implementation })
-            //        .AsEnumerable();
-            //}
+ 
             Register(dependency, implementation, isSingleton);
         }
 

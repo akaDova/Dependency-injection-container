@@ -12,14 +12,15 @@ namespace DIContainer
 
         class ImplementationContainer
         {
+            public Type implementationType;
             object instance;
             object syncRoot = new object();
 
-            public Func<object> createInstance;
+            public Func<Type, object> createInstance;
 
             public Func<object> GetInstance(Func<object> creator)
             {
-                
+
                 return () =>
                 {
                     if (instance == null)
@@ -63,14 +64,17 @@ namespace DIContainer
             Type type;
             bool isSingleton;
             (type, isSingleton) = tuple;
-            var implContainer = new ImplementationContainer();
+            var implContainer = new ImplementationContainer
+            {
+                implementationType = type
+            };
             if (isSingleton)
             {
-                implContainer.createInstance = implContainer.GetInstance(() => CreateFromCtor(type));
+                implContainer.createInstance = (dependency) => implContainer.GetInstance(() => CreateFromCtor(type, dependency))();
             }
             else
             {
-                implContainer.createInstance = () => CreateFromCtor(type);
+                implContainer.createInstance = (dependency) => CreateFromCtor(type, dependency);
             }
 
             return implContainer;
@@ -79,17 +83,43 @@ namespace DIContainer
         public IEnumerable<TService> Resolve<TService>()
         {
             // stub
+            Type type = typeof(TService);
+
+            //if (type.IsGenericType)
             return Resolve(typeof(TService)).Cast<TService>();
         }
 
         private IEnumerable<object> Resolve(Type type)
         {
-            return from dependency in dependencies[type]
-                   select dependency.createInstance();
+            
+            var typeDependency = new List<ImplementationContainer>();
+            
+
+            if (dependencies.TryGetValue(type, out typeDependency))
+            {
+                return from dependency in typeDependency
+                       select dependency.createInstance(type);
+            }
+            if (type.IsGenericType)
+            {
+                
+                if (dependencies.TryGetValue(type.GetGenericTypeDefinition(), out typeDependency))
+                {
+                    return from dependency in typeDependency
+                           select dependency.createInstance(type);
+                }
+            }
+            
+             return new List<object>();
+            
         }
 
-        object CreateFromCtor(Type type)
+        object CreateFromCtor(Type type, Type dependency = null)
         {
+
+            if (type.IsGenericTypeDefinition)
+                type = type.MakeGenericType(dependency.GetGenericArguments());
+
             ConstructorInfo constructor = (
                 from ctor in type.GetConstructors()
                 orderby ctor.GetParameters().Length
